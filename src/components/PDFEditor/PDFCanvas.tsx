@@ -50,7 +50,17 @@ export const PDFCanvas = ({ file, activeTool, zoom, onCanvasReady }: PDFCanvasPr
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         const page = await pdf.getPage(1);
 
-        const viewport = page.getViewport({ scale: 1.5 });
+        // Calculate scale to fit screen while maintaining aspect ratio
+        const originalViewport = page.getViewport({ scale: 1 });
+        const maxWidth = window.innerWidth - 100;
+        const maxHeight = window.innerHeight - 200;
+        const scale = Math.min(
+          maxWidth / originalViewport.width,
+          maxHeight / originalViewport.height,
+          2 // Max scale of 2x
+        );
+
+        const viewport = page.getViewport({ scale });
         const tempCanvas = document.createElement("canvas");
         const context = tempCanvas.getContext("2d");
 
@@ -66,6 +76,9 @@ export const PDFCanvas = ({ file, activeTool, zoom, onCanvasReady }: PDFCanvasPr
 
         await page.render(renderContext).promise;
 
+        // Extract text content for editing
+        const textContent = await page.getTextContent();
+        
         canvas.setDimensions({
           width: viewport.width,
           height: viewport.height,
@@ -73,6 +86,26 @@ export const PDFCanvas = ({ file, activeTool, zoom, onCanvasReady }: PDFCanvasPr
 
         FabricImage.fromURL(tempCanvas.toDataURL()).then((img) => {
           canvas.backgroundImage = img;
+          
+          // Add editable text layers
+          textContent.items.forEach((item: any) => {
+            const tx = pdfjsLib.Util.transform(
+              viewport.transform,
+              item.transform
+            );
+            
+            const text = new FabricText(item.str, {
+              left: tx[4],
+              top: viewport.height - tx[5],
+              fontSize: Math.abs(tx[3]),
+              fill: "rgba(0, 0, 0, 0.8)",
+              fontFamily: item.fontName || "Arial",
+              selectable: true,
+              editable: true,
+            });
+            canvas.add(text);
+          });
+          
           canvas.renderAll();
           toast.success("PDF loaded successfully!");
           setIsLoading(false);
