@@ -6,6 +6,9 @@ import { PDFCanvas } from "@/components/PDFEditor/PDFCanvas";
 import { SignaturePanel } from "@/components/PDFEditor/SignaturePanel";
 import { toast } from "sonner";
 import { jsPDF } from "jspdf";
+import { Document, Paragraph, TextRun, Packer } from "docx";
+import PptxGenJS from "pptxgenjs";
+import { saveAs } from "file-saver";
 
 const Index = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -60,25 +63,97 @@ const Index = () => {
     setZoom((prev) => Math.max(prev - 0.2, 0.5));
   };
 
-  const handleDownload = () => {
+  const handleDownload = (format: "pdf" | "word" | "ppt" = "pdf") => {
     if (!fabricCanvasRef.current) return;
 
     const canvas = fabricCanvasRef.current;
+
+    if (format === "pdf") {
+      const dataUrl = canvas.toDataURL({
+        format: "png",
+        quality: 1,
+        multiplier: 2,
+      });
+
+      const pdf = new jsPDF({
+        orientation: canvas.width! > canvas.height! ? "landscape" : "portrait",
+        unit: "px",
+        format: [canvas.width!, canvas.height!],
+      });
+
+      pdf.addImage(dataUrl, "PNG", 0, 0, canvas.width!, canvas.height!);
+      pdf.save("edited-document.pdf");
+      toast.success("PDF downloaded!");
+    } else if (format === "word") {
+      handleWordExport();
+    } else if (format === "ppt") {
+      handlePptExport();
+    }
+  };
+
+  const handleWordExport = async () => {
+    if (!fabricCanvasRef.current) return;
+
+    const canvas = fabricCanvasRef.current;
+    const objects = canvas.getObjects();
+    
+    const children: Paragraph[] = [];
+    
+    objects.forEach((obj: any) => {
+      if (obj.type === "text" || obj.type === "i-text" || obj.type === "textbox") {
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: obj.text || "",
+                size: (obj.fontSize || 12) * 2,
+                font: obj.fontFamily || "Arial",
+              }),
+            ],
+          })
+        );
+      }
+    });
+
+    const doc = new Document({
+      sections: [{
+        children: children.length > 0 ? children : [
+          new Paragraph({
+            children: [new TextRun("Exported from PDF Editor")],
+          }),
+        ],
+      }],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, "edited-document.docx");
+    toast.success("Word document downloaded!");
+  };
+
+  const handlePptExport = () => {
+    if (!fabricCanvasRef.current) return;
+
+    const canvas = fabricCanvasRef.current;
+    const pptx = new PptxGenJS();
+    
+    const slide = pptx.addSlide();
+    
     const dataUrl = canvas.toDataURL({
       format: "png",
       quality: 1,
-      multiplier: 2,
+      multiplier: 1,
     });
 
-    const pdf = new jsPDF({
-      orientation: canvas.width! > canvas.height! ? "landscape" : "portrait",
-      unit: "px",
-      format: [canvas.width!, canvas.height!],
+    slide.addImage({
+      data: dataUrl,
+      x: 0,
+      y: 0,
+      w: "100%",
+      h: "100%",
     });
 
-    pdf.addImage(dataUrl, "PNG", 0, 0, canvas.width!, canvas.height!);
-    pdf.save("edited-document.pdf");
-    toast.success("PDF downloaded!");
+    pptx.writeFile({ fileName: "edited-document.pptx" });
+    toast.success("PowerPoint downloaded!");
   };
 
   const handleClear = () => {

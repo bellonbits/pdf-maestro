@@ -9,16 +9,23 @@ import {
   Download,
   ZoomIn,
   ZoomOut,
-  Upload
+  Upload,
+  ChevronDown,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ToolbarProps {
   activeTool: string;
   onToolChange: (tool: string) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
-  onDownload: () => void;
+  onDownload: (format?: "pdf" | "word" | "ppt") => void;
   onClear: () => void;
   onUpload: () => void;
   hasDocument: boolean;
@@ -107,16 +114,32 @@ export const Toolbar = ({
           <Trash2 className="w-4 h-4" />
           <span className="hidden sm:inline">Clear</span>
         </Button>
-        <Button
-          variant="default"
-          size="sm"
-          onClick={onDownload}
-          disabled={!hasDocument}
-          className="gap-2 bg-success hover:bg-success/90"
-        >
-          <Download className="w-4 h-4" />
-          <span className="hidden sm:inline">Download</span>
-        </Button>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="default"
+              size="sm"
+              disabled={!hasDocument}
+              className="gap-2 bg-success hover:bg-success/90"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Download</span>
+              <ChevronDown className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => onDownload("pdf")}>
+              Download as PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onDownload("word")}>
+              Download as Word
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onDownload("ppt")}>
+              Download as PowerPoint
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
