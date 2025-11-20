@@ -3,8 +3,11 @@ import { Canvas as FabricCanvas, FabricText, FabricImage, PencilBrush } from "fa
 import * as pdfjsLib from "pdfjs-dist";
 import { toast } from "sonner";
 
-// Set up PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Set up PDF.js worker for Vite
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.mjs",
+  import.meta.url
+).toString();
 
 interface PDFCanvasProps {
   file: File | null;
